@@ -23,7 +23,7 @@
 │   ├── services         # Business logic and services
 │   ├── tests            # Unit tests
 │   ├── utils            # Utility functions
-│   ├── validations      # Validation schemas and functions
+│   ├── validations      # Validation for incoming requests
 ```
 
 ## Task Description

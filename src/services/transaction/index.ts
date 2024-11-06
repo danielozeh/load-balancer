@@ -98,6 +98,10 @@ export default class TransactionService implements ITransactionService {
             label = await this.classifyWithModel(transaction);
         }
 
+        transaction.label = label;
+        transaction.created_at = new Date().toISOString();
+        transaction.updated_at = new Date().toISOString();
+
         await this.saveTransactionToFile(transaction)
 
         // Cache the result to improve speed for similar future transactions
