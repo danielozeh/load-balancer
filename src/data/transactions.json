@@ -1,0 +1,32 @@
+[
+  {
+    "type": "credit",
+    "amount": 100000,
+    "description": "Fee for the month of October",
+    "tx_ref": "2f52339f-d57b-427d-bfc9-5c91d44225f0"
+  },
+  {
+    "type": "credit",
+    "amount": 100000,
+    "description": "Fee for the month of October",
+    "tx_ref": "1f5881e4-415c-4a1c-aa94-5f4f81e4e4c0"
+  },
+  {
+    "type": "credit",
+    "amount": 100000,
+    "description": "Fee for the month of October",
+    "tx_ref": "7dfee554-2d23-4a62-a3e1-89397e0e1fb1"
+  },
+  {
+    "type": "credit",
+    "amount": 100000,
+    "description": "Payment for the month of October",
+    "tx_ref": "6ca41e31-c042-4f5e-b34b-8a14b8c923f3"
+  },
+  {
+    "type": "credit",
+    "amount": 100000,
+    "description": "Salary for the month of October",
+    "tx_ref": "be08b2d5-6bbd-44f6-9352-c568f80e934e"
+  }
+]
