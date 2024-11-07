@@ -8,10 +8,12 @@ let currentSwitchIndex = 0;
 const cache = new NodeCache({ stdTTL: 60 }); // Cache health status for 60 seconds
 const labelCache = new NodeCache({ stdTTL: 600 }); // Cache labeling results for 10 minutes
 
+import * as tf from "@tensorflow/tfjs-node";
 import fs from 'fs/promises';
 import path from 'path';
 
 const transactionsFilePath = path.join(__dirname, '../../data/transactions.json');
+const modelFilePath = path.join(__dirname, '../../data/transaction_model');
 
 export default class TransactionService implements ITransactionService {
     /**
@@ -116,15 +118,14 @@ export default class TransactionService implements ITransactionService {
      * @returns 
      */
     applyRules(transaction: any): string | null {
-        if (transaction.type === 'credit' && transaction.description.includes('refund')) {
-            return 'Refund';
-        }
-        if (transaction.amount > 1000 && transaction.description.includes('purchase')) {
-            return 'Large Purchase';
-        }
-        if (transaction.description.match(/salary|wages|payroll/i)) {
-            return 'Salary Payment';
-        }
+        if (transaction.type === 'credit' && transaction.description.includes('refund')) return 'Refund';
+        if (transaction.type === 'debit' && transaction.description.match(/withdrawal|ATM|cash out/i)) return 'Cash Withdrawal';
+        if (transaction.amount > 5000 && transaction.description.includes('purchase')) return 'Large Purchase';
+        if (transaction.description.match(/salary|wages|payroll/i)) return 'Salary Payment';
+        if (transaction.type === 'debit' && transaction.description.match(/service charge|fee|bank charge/i)) return 'Bank Charges';
+        if (transaction.type === 'credit' && transaction.description.includes('transfer')) return 'Transfer Received';
+        if (transaction.type === 'debit' && transaction.description.includes('transfer')) return 'Transfer Sent';
+        if (transaction.amount > 20000 && transaction.description.includes('bill')) return 'High-Value Bill Payment';
         // more rules can be added here
         return null; // Return null if no rule matches
     }
@@ -134,12 +135,57 @@ export default class TransactionService implements ITransactionService {
      */
     async classifyWithModel(transaction: any): Promise<string> {
         try {
-            const label = await this.classifyTransaction(transaction); // Hypothetical ML model function
-            return label;
+            const transactions = await this.readTransactionsFromFile();
+            const labels = transactions.map((t: any) => t.label);
+
+            const uniqueLabels = Array.from(new Set(labels));
+            if (uniqueLabels.length < 2) return 'Unclassified';
+
+            const labelIndexMap = uniqueLabels.reduce((acc, label, index) => {
+                acc[label] = index;
+                return acc;
+            }, {});
+
+            const labelData = labels.map(label => labelIndexMap[label]);
+            const inputData = transactions.map((t: any) => [t.amount, t.transaction_type || 0]);
+
+            const model = await this.trainOrLoadNewModel(inputData, labelData, uniqueLabels);
+            const transactionFeatures = tf.tensor2d([[transaction.amount, transaction.transaction_type || 0]]);
+            const prediction = model.predict(transactionFeatures) as tf.Tensor;
+
+            return uniqueLabels[prediction.argMax(-1).dataSync()[0]];
         } catch (error) {
-            console.error("Model classification failed:", error);
+            // console.error("Model classification failed:", error);
             return 'Unclassified';
         }
+    }
+
+    async trainOrLoadNewModel(inputData: any, labelData: any, uniqueLabels: any) {
+        try {
+            return await tf.loadLayersModel(`file://${modelFilePath}`);
+        } catch (error) {
+            console.log("No pre-trained model found. Training a new model.");
+            return await this.trainNewModel(inputData, labelData, uniqueLabels);
+        }
+    }
+
+    async trainNewModel(inputData: any, labelData: any, uniqueLabels: any): Promise<tf.LayersModel> {
+        const xs = tf.tensor2d(inputData, [inputData.length, inputData[0].length]);
+        const ys = tf.oneHot(tf.tensor1d(labelData, 'int32'), uniqueLabels.length);
+
+        const model = tf.sequential();
+        model.add(tf.layers.dense({ units: 16, activation: 'relu', inputShape: [2] }));
+        model.add(tf.layers.dense({ units: uniqueLabels.length, activation: 'softmax' }));
+        model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+
+        await model.fit(xs, ys, { epochs: 20 });
+        xs.dispose();
+        ys.dispose();
+
+        await model.save(`file://${modelFilePath}`);
+        console.log("Model trained and saved.");
+
+        return model;
     }
 
     async saveTransactionToDB(transaction: any, label: string) {
@@ -177,10 +223,8 @@ export default class TransactionService implements ITransactionService {
      * In a real-world case, this might use a pre-trained model.
      */
     async classifyTransaction(transaction: any): Promise<string> {
-        // This is a hypothetical ML model function
-        // In real world, this will be a ML model function which can be trained on past transactions
-        // For now, we will use a simple rule-based approach to classify the transaction
-        // We can use models built with machine learning libraries like TensorFlow, PyTorch, etc.
+
+        // TODO: Implement a real ML model here if there is time. - I will be using Google's Vertex AI for this.
 
         const transactions = await this.readTransactionsFromFile();
         const pastTransactions = transactions.filter((t: any) => t.type === transaction.type);

@@ -33,7 +33,7 @@ The goal of this project is to create a robust transaction processing system tha
 - Processes transactions by directing requests to multiple server endpoints.
 - Ensures high availability by selecting healthy servers.
 - Caches server health status for performance optimization.
-- Labels transactions using a combination of rule-based and machine learning (ML) methods.
+- Labels transactions using a combination of rule-based and machine learning (ML) methods (TensorFlow).
 - Stores transaction data and labels in a File (No DB for this project).
 - Includes a clock service (clock.ts) for periodic health checks on the servers.
 
