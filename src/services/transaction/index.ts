@@ -107,7 +107,7 @@ export default class TransactionService implements ITransactionService {
         await this.saveTransactionToFile(transaction)
 
         // Cache the result to improve speed for similar future transactions
-        labelCache.set(transaction.tx_ref, label);
+        labelCache.set(transaction.tx_ref, label); // Cache the result to improve speed for similar future transactions
         
         return label;
     }
@@ -135,54 +135,68 @@ export default class TransactionService implements ITransactionService {
      */
     async classifyWithModel(transaction: any): Promise<string> {
         try {
-            const transactions = await this.readTransactionsFromFile();
-            const labels = transactions.map((t: any) => t.label);
+            const transactions = await this.readTransactionsFromFile(); // Read transactions from the file
+            const labels = transactions.map((t: any) => t.label); // Extract labels from transactions
 
-            const uniqueLabels = Array.from(new Set(labels));
-            if (uniqueLabels.length < 2) return 'Unclassified';
+            const uniqueLabels = Array.from(new Set(labels)); // Get unique labels
+            if (uniqueLabels.length < 2) return 'Unclassified'; // Return 'Unclassified' if there are less than 2 unique labels
 
             const labelIndexMap = uniqueLabels.reduce((acc, label, index) => {
                 acc[label] = index;
                 return acc;
             }, {});
 
-            const labelData = labels.map(label => labelIndexMap[label]);
-            const inputData = transactions.map((t: any) => [t.amount, t.transaction_type || 0]);
+            const labelData = labels.map(label => labelIndexMap[label]); // Convert labels to indices
+            const inputData = transactions.map((t: any) => [t.amount, t.transaction_type || 0]); // Prepare input data
 
-            const model = await this.trainOrLoadNewModel(inputData, labelData, uniqueLabels);
-            const transactionFeatures = tf.tensor2d([[transaction.amount, transaction.transaction_type || 0]]);
-            const prediction = model.predict(transactionFeatures) as tf.Tensor;
+            const model = await this.trainOrLoadNewModel(inputData, labelData, uniqueLabels); // Train or load a new model
+            const transactionFeatures = tf.tensor2d([[transaction.amount, transaction.transaction_type || 0]]); // Prepare transaction features
+            const prediction = model.predict(transactionFeatures) as tf.Tensor; // Make a prediction
 
-            return uniqueLabels[prediction.argMax(-1).dataSync()[0]];
+            return uniqueLabels[prediction.argMax(-1).dataSync()[0]]; // Return the predicted label
         } catch (error) {
             // console.error("Model classification failed:", error);
             return 'Unclassified';
         }
     }
 
+    /**
+     * Train or load a new model
+     * @param inputData 
+     * @param labelData 
+     * @param uniqueLabels 
+     * @returns 
+     */
     async trainOrLoadNewModel(inputData: any, labelData: any, uniqueLabels: any) {
         try {
-            return await tf.loadLayersModel(`file://${modelFilePath}`);
+            return await tf.loadLayersModel(`file://${modelFilePath}`); // Load the pre-trained model from the specified path
         } catch (error) {
             console.log("No pre-trained model found. Training a new model.");
             return await this.trainNewModel(inputData, labelData, uniqueLabels);
         }
     }
 
+    /**
+     * Train a new model
+     * @param inputData 
+     * @param labelData 
+     * @param uniqueLabels 
+     * @returns 
+     */
     async trainNewModel(inputData: any, labelData: any, uniqueLabels: any): Promise<tf.LayersModel> {
-        const xs = tf.tensor2d(inputData, [inputData.length, inputData[0].length]);
-        const ys = tf.oneHot(tf.tensor1d(labelData, 'int32'), uniqueLabels.length);
+        const xs = tf.tensor2d(inputData, [inputData.length, inputData[0].length]); // Convert input data to tensor
+        const ys = tf.oneHot(tf.tensor1d(labelData, 'int32'), uniqueLabels.length); // Convert label data to one-hot encoding
 
-        const model = tf.sequential();
-        model.add(tf.layers.dense({ units: 16, activation: 'relu', inputShape: [2] }));
-        model.add(tf.layers.dense({ units: uniqueLabels.length, activation: 'softmax' }));
-        model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+        const model = tf.sequential(); // Create a sequential model
+        model.add(tf.layers.dense({ units: 16, activation: 'relu', inputShape: [2] })); // Add a dense layer with 16 units and ReLU activation
+        model.add(tf.layers.dense({ units: uniqueLabels.length, activation: 'softmax' })); // Add a dense layer with softmax activation
+        model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: ['accuracy'] }); // Compile the model with Adam optimizer, categorical cross-entropy loss, and accuracy metric
 
-        await model.fit(xs, ys, { epochs: 20 });
+        await model.fit(xs, ys, { epochs: 20 }); // Train the model for 20 epochs
         xs.dispose();
         ys.dispose();
 
-        await model.save(`file://${modelFilePath}`);
+        await model.save(`file://${modelFilePath}`); // Save the model to the specified path
         console.log("Model trained and saved.");
 
         return model;

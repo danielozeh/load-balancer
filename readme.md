@@ -26,7 +26,16 @@
 │   ├── validations      # Validation for incoming requests
 ```
 
+### Technologies Used
+- Node.js
+- Express
+- TensorFlow
+- Typescript
+- Jest
+
 ## Task Description
+
+### Project Overview
 
 The goal of this project is to create a robust transaction processing system that:
 
