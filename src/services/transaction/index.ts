@@ -32,7 +32,7 @@ export default class TransactionService implements ITransactionService {
             const response = await axios.post(`${switchObj.url}/v1/transaction/process`, transaction);
             // console.log('Response: ', response)
             
-            const label = await this.labelTransaction(transaction);
+            const label = await this.labelTransaction(transaction); // Label the transaction
 
             return { status: true, message: 'Transaction processed successfully', data: {transaction, label} }
             

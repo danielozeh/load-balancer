@@ -24,11 +24,11 @@ const corsOptions = {
     }
 }
 
-app.use(express.static('.'));
-app.use(cors(corsOptions))
-app.use(bodyParser.json({limit: '50mb', verify: rawBodySaver}))
-app.use(bodyParser.urlencoded({limit: '50mb', verify: rawBodySaver, extended: false}))
-app.use(morgan('dev'))
+app.use(express.static('.')); // Serve static files from the current directory
+app.use(cors(corsOptions)) // Enable cors
+app.use(bodyParser.json({limit: '50mb', verify: rawBodySaver})) // Parse JSON bodies with a limit of 50mb
+app.use(bodyParser.urlencoded({limit: '50mb', verify: rawBodySaver, extended: false})) // Parse URL-encoded bodies with a limit of 50mb
+app.use(morgan('dev')) // Log HTTP requests in the development environment
 // app.use(helmet())
 
 app.use(routes)
@@ -43,7 +43,7 @@ app.use(function(req, res, next){
 })
 
 const startAPI = () => {
-    const server = http.createServer(app)
+    const server = http.createServer(app) // Create a server
     // Start the server without the error handler in the listen callback
     server.listen(process.argv[2], () => {
         console.log('Load Balancing Service started on port %O', process.argv[2]);
